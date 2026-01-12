@@ -13,7 +13,8 @@
             justify-content: center;
             align-items: center;
             perspective: 1500px;
-            /* 禁止手机长按弹出菜单，优化拖拽体验 */
+            /* --- 核心修复：禁止浏览器默认的滑动行为 --- */
+            touch-action: none; 
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
@@ -33,11 +34,9 @@
             filter: blur(1px);
         }
 
-        /* 核心舞台 */
         .stage {
             position: relative;
-            width: 0;
-            height: 0;
+            width: 0; height: 0;
             transform-style: preserve-3d;
             transform: rotateX(-15deg);
             will-change: transform;
@@ -46,8 +45,7 @@
         .carousel, .outer-carousel {
             position: absolute;
             transform-style: preserve-3d;
-            left: 0;
-            top: 0;
+            left: 0; top: 0;
             will-change: transform;
         }
 
@@ -56,30 +54,17 @@
             object-fit: cover;
             border: 1px solid rgba(255,255,255,0.4);
             box-shadow: 0 0 15px rgba(0,242,255,0.3);
-            transition: border-color 0.4s, box-shadow 0.4s;
             transform-origin: center;
             -webkit-box-reflect: below 15px linear-gradient(transparent, rgba(0,0,0,0.1));
-            pointer-events: none; /* 防止图片干扰拖拽事件 */
+            /* 防止手指点到图片时触发系统的“保存图片”或“选择文字” */
+            pointer-events: none; 
         }
 
-        .photo { 
-            width: 180px; height: 250px; 
-            border-radius: 12px;
-            margin-left: -90px; margin-top: -125px;
-        }
+        .photo { width: 180px; height: 250px; border-radius: 12px; margin-left: -90px; margin-top: -125px; }
+        .asteroid { width: 70px; height: 70px; border-radius: 50%; margin-left: -35px; margin-top: -35px; }
 
-        .asteroid { 
-            width: 70px; height: 70px; 
-            border-radius: 50%; 
-            margin-left: -35px; margin-top: -35px;
-        }
-
-        /* 补丁：手机端性能优化 */
         @media (max-width: 768px) {
-            .photo, .asteroid {
-                -webkit-box-reflect: none !important;
-                filter: none !important;
-            }
+            .photo, .asteroid { -webkit-box-reflect: none !important; filter: none !important; }
             .photo { width: 120px; height: 160px; margin-left: -60px; margin-top: -80px; }
         }
     </style>
@@ -101,23 +86,20 @@
         const starfield = document.getElementById('starfield');
         const isMobile = window.innerWidth <= 768;
 
-        // --- 初始化布局 ---
+        // 初始化布局
         function init() {
-            // 星星
-            for (let i = 0; i < (isMobile ? 60 : 150); i++) {
+            for (let i = 0; i < (isMobile ? 50 : 120); i++) {
                 const star = document.createElement('div');
                 star.className = 'star';
                 const size = Math.random() * 2 + 'px';
                 star.style.width = size; star.style.height = size;
                 star.style.left = Math.random() * 100 + 'vw';
                 star.style.top = Math.random() * 100 + 'vh';
-                star.style.opacity = Math.random();
                 starfield.appendChild(star);
             }
 
-            // 内圈
             const totalMain = isMobile ? 6 : 10;
-            const radiusMain = isMobile ? 250 : 450;
+            const radiusMain = isMobile ? 260 : 450;
             for (let i = 0; i < totalMain; i++) {
                 const img = document.createElement('img');
                 img.className = 'photo';
@@ -127,9 +109,8 @@
                 carousel.appendChild(img);
             }
 
-            // 外圈
             const totalOuter = isMobile ? 8 : 15;
-            const radiusOuter = isMobile ? 450 : 800;
+            const radiusOuter = isMobile ? 500 : 800;
             for (let i = 0; i < totalOuter; i++) {
                 const img = document.createElement('img');
                 img.className = 'asteroid';
@@ -141,50 +122,54 @@
             }
         }
 
-        // --- 核心交互逻辑 ---
+        // 交互逻辑
         let isPointerDown = false;
         let startX, startY;
-        let currentRotateY = 0; // 控制水平旋转
-        let currentRotateX = -15; // 控制垂直倾斜
         let targetRotateY = 0;
         let targetRotateX = -15;
+        let currentRotateY = 0;
+        let currentRotateX = -15;
 
-        // 监听鼠标和触摸按下
-        const onPointerDown = (e) => {
-            isPointerDown = true;
-            startX = e.clientX || e.touches[0].clientX;
-            startY = e.clientY || e.touches[0].clientY;
+        // 统一处理鼠标和触摸
+        const getPoint = (e) => {
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            return { x: e.clientX, y: e.clientY };
         };
 
-        // 监听移动
-        const onPointerMove = (e) => {
-            if (!isPointerDown) return;
-            const x = e.clientX || e.touches[0].clientX;
-            const y = e.clientY || e.touches[0].clientY;
+        const onStart = (e) => {
+            isPointerDown = true;
+            const p = getPoint(e);
+            startX = p.x;
+            startY = p.y;
+        };
 
-            // 计算偏移量（控制灵敏度）
-            const deltaX = (x - startX) * 0.2;
-            const deltaY = (y - startY) * 0.2;
+        const onMove = (e) => {
+            if (!isPointerDown) return;
+            // 阻止移动端的默认拉动刷新/翻页行为
+            if (e.cancelable) e.preventDefault(); 
+
+            const p = getPoint(e);
+            const deltaX = (p.x - startX) * 0.3; // 灵敏度
+            const deltaY = (p.y - startY) * 0.3;
 
             targetRotateY += deltaX;
             targetRotateX -= deltaY;
 
-            // 限制上下翻转的角度，防止翻转过度
-            targetRotateX = Math.max(-60, Math.min(60, targetRotateX));
+            // 限制仰角，防止画面翻个底朝天
+            targetRotateX = Math.max(-50, Math.min(50, targetRotateX));
 
-            startX = x;
-            startY = y;
+            startX = p.x;
+            startY = p.y;
         };
 
-        const onPointerUp = () => { isPointerDown = false; };
+        const onEnd = () => { isPointerDown = false; };
 
-        // 使用 RequestAnimationFrame 实现平滑阻尼效果
         function update() {
-            // 线性插值让转动更丝滑，不会生硬停止
             currentRotateY += (targetRotateY - currentRotateY) * 0.1;
             currentRotateX += (targetRotateX - currentRotateX) * 0.1;
 
-            // 应用到不同的圈层，外圈反向旋转一点点增加空间感
             carousel.style.transform = `rotateY(${currentRotateY}deg)`;
             outerCarousel.style.transform = `rotateY(${-currentRotateY * 0.5}deg)`;
             stage.style.transform = `rotateX(${currentRotateX}deg)`;
@@ -192,13 +177,13 @@
             requestAnimationFrame(update);
         }
 
-        // 绑定事件
-        window.addEventListener('mousedown', onPointerDown);
-        window.addEventListener('touchstart', onPointerDown, {passive: false});
-        window.addEventListener('mousemove', onPointerMove);
-        window.addEventListener('touchmove', onPointerMove, {passive: false});
-        window.addEventListener('mouseup', onPointerUp);
-        window.addEventListener('touchend', onPointerUp);
+        // 事件绑定
+        window.addEventListener('mousedown', onStart);
+        window.addEventListener('touchstart', onStart, {passive: false});
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('touchmove', onMove, {passive: false});
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchend', onEnd);
 
         init();
         update();
