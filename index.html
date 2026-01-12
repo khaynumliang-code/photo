@@ -6,7 +6,6 @@
     <style>
         body {
             margin: 0;
-            /* 深邃宇宙渐变背景 */
             background: radial-gradient(circle at center, #001a33 0%, #000000 80%);
             overflow: hidden;
             height: 100vh;
@@ -23,7 +22,6 @@
             z-index: -1;
         }
 
-        /* 1. 星星闪烁动画 */
         .star {
             position: absolute;
             background: white;
@@ -37,7 +35,6 @@
             50% { opacity: 1; transform: scale(1.2); }
         }
 
-        /* 2. 流星动画 */
         .shooting-star {
             position: absolute;
             width: 100px;
@@ -55,7 +52,6 @@
             100% { opacity: 0; }
         }
 
-        /* 核心舞台 */
         .stage {
             position: relative;
             width: 0;
@@ -63,6 +59,7 @@
             transform-style: preserve-3d;
             transform: rotateX(-15deg);
             transition: transform 0.2s ease-out;
+            will-change: transform;
         }
 
         .carousel, .outer-carousel {
@@ -70,9 +67,9 @@
             transform-style: preserve-3d;
             left: 0;
             top: 0;
+            will-change: transform;
         }
 
-        /* 内圈慢速旋转，外圈中速反向旋转 */
         .carousel { animation: rotateMain 40s linear infinite; }
         .outer-carousel { animation: rotateOuter 60s linear infinite reverse; }
 
@@ -83,7 +80,6 @@
             box-shadow: 0 0 15px rgba(0,242,255,0.3);
             transition: all 0.4s ease;
             transform-origin: center;
-            /* 倒影效果 */
             -webkit-box-reflect: below 15px linear-gradient(transparent, rgba(0,0,0,0.1));
         }
 
@@ -93,7 +89,6 @@
             margin-left: -90px; margin-top: -125px;
         }
 
-        /* 3. 外圈增加灵动的“悬浮”感 */
         .asteroid { 
             width: 70px; height: 70px; 
             border-radius: 50%; 
@@ -116,6 +111,23 @@
             cursor: pointer;
             z-index: 999;
         }
+
+        /* --- 手机端性能优化补丁 --- */
+        @media (max-width: 768px) {
+            .photo, .asteroid {
+                -webkit-box-reflect: none !important; /* 手机端关闭极其耗能的倒影 */
+                filter: none !important;              /* 关闭滤镜减少GPU计算 */
+                box-shadow: 0 5px 15px rgba(0,242,255,0.2);
+            }
+            .star {
+                animation: none !important; /* 减少数百个DOM元素的实时动画 */
+                opacity: 0.5;
+            }
+            .stage {
+                perspective: 1000px; /* 减小视距，减轻3D渲染压力 */
+            }
+            .photo { width: 120px; height: 160px; margin-left: -60px; margin-top: -80px; } /* 缩小手机端尺寸 */
+        }
     </style>
 </head>
 <body>
@@ -128,7 +140,6 @@
     </div>
 
     <script>
-        // --- 1. 这里填入你的图片文件名 ---
         const myImages = ['ttpp1.jpg', 'ttpp2.jpg', 'ttpp3.jpg'];
         
         const stage = document.getElementById('stage');
@@ -136,9 +147,13 @@
         const outerCarousel = document.getElementById('outer-carousel');
         const starfield = document.getElementById('starfield');
 
-        // 生成星空
+        // 检测是否为移动端
+        const isMobile = window.innerWidth <= 768;
+
+        // 生成星空 (移动端减少星星数量)
         function createStars() {
-            for (let i = 0; i < 180; i++) {
+            const starCount = isMobile ? 60 : 180; 
+            for (let i = 0; i < starCount; i++) {
                 const star = document.createElement('div');
                 star.className = 'star';
                 const size = Math.random() * 3 + 'px';
@@ -151,7 +166,6 @@
             }
         }
 
-        // 生成随机流星
         function createShootingStars() {
             setInterval(() => {
                 const s = document.createElement('div');
@@ -161,32 +175,29 @@
                 s.style.setProperty('--speed', (Math.random() * 2 + 2) + 's');
                 starfield.appendChild(s);
                 setTimeout(() => s.remove(), 4000);
-            }, 3000);
+            }, isMobile ? 5000 : 3000); // 手机端延长流星间隔
         }
 
-        // 生成内圈 (展示你的图片)
-        const totalMain = 10; 
-        const radiusMain = 450;
+        const totalMain = isMobile ? 6 : 10; // 手机端内圈图片减至6张
+        const radiusMain = isMobile ? 250 : 450;
         for (let i = 0; i < totalMain; i++) {
             const img = document.createElement('img');
             img.className = 'photo';
-            img.src = myImages[i % myImages.length]; // 循环使用你的图片
+            img.src = myImages[i % myImages.length]; 
             const angle = i * (360 / totalMain);
             img.style.transform = `rotateY(${angle}deg) translateZ(${radiusMain}px)`;
             carousel.appendChild(img);
         }
 
-        // 生成外圈 (展示你的图片作为小行星)
-        const totalOuter = 18;
-        const radiusOuter = 800;
+        const totalOuter = isMobile ? 8 : 18; // 手机端外圈图片减至8张
+        const radiusOuter = isMobile ? 450 : 800;
         for (let i = 0; i < totalOuter; i++) {
             const img = document.createElement('img');
             img.className = 'asteroid';
             img.src = myImages[i % myImages.length]; 
             const angle = i * (360 / totalOuter);
-            const randomY = (Math.random() - 0.5) * 400; // 随机高度分布
+            const randomY = (Math.random() - 0.5) * (isMobile ? 200 : 400); 
             
-            // 将基础位置存入变量，用于 CSS 浮动动画
             const basePos = `rotateY(${angle}deg) translateZ(${radiusOuter}px) translateY(${randomY}px)`;
             img.style.setProperty('--base-transform', basePos);
             img.style.animationDelay = (Math.random() * 5) + 's';
@@ -195,16 +206,22 @@
             outerCarousel.appendChild(img);
         }
 
-        // 初始化
         createStars();
         createShootingStars();
 
-        // 鼠标跟随互动
         document.addEventListener('mousemove', (e) => {
             const xPercent = (e.clientX / window.innerWidth) - 0.5;
             const yPercent = (e.clientY / window.innerHeight) - 0.5;
             stage.style.transform = `rotateX(${-15 - (yPercent * 30)}deg) rotateY(${xPercent * 30}deg)`;
         });
+
+        // 手机端触摸互动
+        document.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            const xPercent = (touch.clientX / window.innerWidth) - 0.5;
+            const yPercent = (touch.clientY / window.innerHeight) - 0.5;
+            stage.style.transform = `rotateX(${-15 - (yPercent * 20)}deg) rotateY(${xPercent * 20}deg)`;
+        }, {passive: true});
 
     </script>
 </body>
