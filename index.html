@@ -4,18 +4,21 @@
     <meta charset="UTF-8">
     <title>互动星系画廊 - ttpp</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            margin: 0;
             background: radial-gradient(circle at center, #001a33 0%, #000000 80%);
             overflow: hidden;
-            height: 100vh;
             width: 100vw;
+            height: 100vh;
+            /* 使用 Flex 确保容器本身居中 */
             display: flex;
             justify-content: center;
             align-items: center;
-            perspective: 1200px;
-            perspective-origin: 50% 50%; /* 强制透视点在正中心 */
-            touch-action: none; 
+            perspective: 1000px;
+            /* 关键：视点必须在正中心 */
+            perspective-origin: center center; 
+            touch-action: none;
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
@@ -23,6 +26,7 @@
 
         #starfield {
             position: fixed;
+            top: 0; left: 0;
             width: 100%; height: 100%;
             z-index: -1;
         }
@@ -33,24 +37,25 @@
             border-radius: 50%;
         }
 
-        /* 核心修复：使用 fixed 居中定位舞台 */
+        /* 舞台居中逻辑：取消 fixed，使用相对中心 */
         .stage {
-            position: fixed;
-            top: 50%;
-            left: 50%;
+            position: relative;
             transform-style: preserve-3d;
-            transform: translate(-50%, -50%) rotateX(-10deg);
+            /* 初始倾斜 */
+            transform: rotateX(-10deg);
             will-change: transform;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .carousel, .outer-carousel {
             position: absolute;
             transform-style: preserve-3d;
-            left: 0; top: 0;
+            will-change: transform;
             display: flex;
             justify-content: center;
             align-items: center;
-            will-change: transform;
         }
 
         .photo, .asteroid {
@@ -58,28 +63,24 @@
             object-fit: cover;
             border: 1px solid rgba(255,255,255,0.4);
             box-shadow: 0 0 15px rgba(0,242,255,0.3);
+            /* 强制变换中心 */
             transform-origin: center center;
+            pointer-events: none;
             -webkit-box-reflect: below 15px linear-gradient(transparent, rgba(0,0,0,0.1));
-            pointer-events: none; 
         }
 
-        /* 电脑端尺寸 */
-        .photo { width: 180px; height: 250px; border-radius: 12px; margin-left: -90px; margin-top: -125px; }
-        .asteroid { width: 70px; height: 70px; border-radius: 50%; margin-left: -35px; margin-top: -35px; }
+        /* 电脑尺寸 */
+        .photo { width: 180px; height: 250px; border-radius: 12px; }
+        .asteroid { width: 60px; height: 60px; border-radius: 50%; }
 
-        /* 手机端专门适配 */
+        /* 手机适配：核心是缩小半径和取消昂贵特效 */
         @media (max-width: 768px) {
             .photo { 
-                width: 110px; height: 150px; 
-                margin-left: -55px; margin-top: -75px; 
-                -webkit-box-reflect: none !important; 
-                filter: none !important; 
-            }
-            .asteroid { 
-                width: 40px; height: 40px; 
-                margin-left: -20px; margin-top: -20px; 
+                width: 100px; height: 140px; 
+                -webkit-box-reflect: none !important;
                 filter: none !important;
             }
+            .asteroid { width: 40px; height: 40px; filter: none !important;}
         }
     </style>
 </head>
@@ -101,44 +102,44 @@
         const isMobile = window.innerWidth <= 768;
 
         function init() {
-            // 生成星星
-            for (let i = 0; i < (isMobile ? 40 : 120); i++) {
+            // 星星
+            for (let i = 0; i < (isMobile ? 40 : 100); i++) {
                 const star = document.createElement('div');
                 star.className = 'star';
-                const size = (Math.random() * 2) + 'px';
+                const size = Math.random() * 2 + 'px';
                 star.style.width = size; star.style.height = size;
                 star.style.left = Math.random() * 100 + 'vw';
                 star.style.top = Math.random() * 100 + 'vh';
                 starfield.appendChild(star);
             }
 
-            // 内圈：手机端半径缩小至 170
-            const totalMain = isMobile ? 8 : 10;
-            const radiusMain = isMobile ? 170 : 450;
+            // 内圈
+            const totalMain = isMobile ? 6 : 10;
+            const radiusMain = isMobile ? 160 : 400; // 手机端进一步缩小半径防止偏离
             for (let i = 0; i < totalMain; i++) {
                 const img = document.createElement('img');
                 img.className = 'photo';
                 img.src = myImages[i % myImages.length];
                 const angle = i * (360 / totalMain);
+                // 确保 translateZ 是最后的变换
                 img.style.transform = `rotateY(${angle}deg) translateZ(${radiusMain}px)`;
                 carousel.appendChild(img);
             }
 
-            // 外圈：手机端半径缩小至 300
-            const totalOuter = isMobile ? 8 : 15;
-            const radiusOuter = isMobile ? 300 : 800;
+            // 外圈
+            const totalOuter = isMobile ? 6 : 12;
+            const radiusOuter = isMobile ? 280 : 700;
             for (let i = 0; i < totalOuter; i++) {
                 const img = document.createElement('img');
                 img.className = 'asteroid';
                 img.src = myImages[i % myImages.length];
                 const angle = i * (360 / totalOuter);
-                const randomY = (Math.random() - 0.5) * (isMobile ? 200 : 500);
+                const randomY = (Math.random() - 0.5) * (isMobile ? 150 : 400);
                 img.style.transform = `rotateY(${angle}deg) translateZ(${radiusOuter}px) translateY(${randomY}px)`;
                 outerCarousel.appendChild(img);
             }
         }
 
-        // 交互逻辑
         let isPointerDown = false;
         let startX, startY;
         let targetRotateY = 0;
@@ -151,47 +152,42 @@
             return { x: e.clientX, y: e.clientY };
         };
 
-        const onStart = (e) => {
-            isPointerDown = true;
-            const p = getPoint(e);
-            startX = p.x; startY = p.y;
-        };
+        window.addEventListener('mousedown', (e) => { isPointerDown = true; const p = getPoint(e); startX = p.x; startY = p.y; });
+        window.addEventListener('touchstart', (e) => { isPointerDown = true; const p = getPoint(e); startX = p.x; startY = p.y; }, {passive: false});
 
-        const onMove = (e) => {
+        window.addEventListener('mousemove', (e) => {
             if (!isPointerDown) return;
-            if (e.cancelable) e.preventDefault(); 
             const p = getPoint(e);
-            const deltaX = (p.x - startX) * 0.4;
-            const deltaY = (p.y - startY) * 0.4;
-
-            targetRotateY += deltaX;
-            targetRotateX -= deltaY;
-            targetRotateX = Math.max(-40, Math.min(40, targetRotateX));
-
+            targetRotateY += (p.x - startX) * 0.3;
+            targetRotateX -= (p.y - startY) * 0.3;
+            targetRotateX = Math.max(-35, Math.min(35, targetRotateX));
             startX = p.x; startY = p.y;
-        };
+        });
 
-        const onEnd = () => { isPointerDown = false; };
+        window.addEventListener('touchmove', (e) => {
+            if (!isPointerDown) return;
+            if (e.cancelable) e.preventDefault();
+            const p = getPoint(e);
+            targetRotateY += (p.x - startX) * 0.5; // 手机端稍微灵敏点
+            targetRotateX -= (p.y - startY) * 0.5;
+            targetRotateX = Math.max(-35, Math.min(35, targetRotateX));
+            startX = p.x; startY = p.y;
+        }, {passive: false});
+
+        window.addEventListener('mouseup', () => isPointerDown = false);
+        window.addEventListener('touchend', () => isPointerDown = false);
 
         function update() {
-            currentRotateY += (targetRotateY - currentRotateY) * 0.08;
-            currentRotateX += (targetRotateX - currentRotateX) * 0.08;
+            currentRotateY += (targetRotateY - currentRotateY) * 0.1;
+            currentRotateX += (targetRotateX - currentRotateX) * 0.1;
 
-            // 修正应用位置，确保 stage 在正中心
+            // 这里是关键：stage 不再使用 translate(-50%,-50%)，而是靠 flex 居中，只负责 rotateX
+            stage.style.transform = `rotateX(${currentRotateX}deg)`;
             carousel.style.transform = `rotateY(${currentRotateY}deg)`;
-            outerCarousel.style.transform = `rotateY(${-currentRotateY * 0.3}deg)`;
-            // 同时应用平移和旋转，确保居中
-            stage.style.transform = `translate(-50%, -50%) rotateX(${currentRotateX}deg)`;
+            outerCarousel.style.transform = `rotateY(${-currentRotateY * 0.4}deg)`;
 
             requestAnimationFrame(update);
         }
-
-        window.addEventListener('mousedown', onStart);
-        window.addEventListener('touchstart', onStart, {passive: false});
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('touchmove', onMove, {passive: false});
-        window.addEventListener('mouseup', onEnd);
-        window.addEventListener('touchend', onEnd);
 
         init();
         update();
