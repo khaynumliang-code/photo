@@ -9,13 +9,12 @@
             background: radial-gradient(circle at center, #001a33 0%, #000000 80%);
             overflow: hidden;
             height: 100vh;
+            width: 100vw;
             display: flex;
             justify-content: center;
             align-items: center;
-            /* 调整视距：手机端稍微远一点，防止物体“冲”出屏幕 */
             perspective: 1200px;
-            /* 确保视点在屏幕中心 */
-            perspective-origin: center center;
+            perspective-origin: 50% 50%; /* 强制透视点在正中心 */
             touch-action: none; 
             -webkit-touch-callout: none;
             -webkit-user-select: none;
@@ -24,8 +23,7 @@
 
         #starfield {
             position: fixed;
-            width: 100%;
-            height: 100%;
+            width: 100%; height: 100%;
             z-index: -1;
         }
 
@@ -35,19 +33,23 @@
             border-radius: 50%;
         }
 
+        /* 核心修复：使用 fixed 居中定位舞台 */
         .stage {
-            position: relative;
-            /* 显式定义舞台为中心点 */
-            width: 0; height: 0;
+            position: fixed;
+            top: 50%;
+            left: 50%;
             transform-style: preserve-3d;
+            transform: translate(-50%, -50%) rotateX(-10deg);
             will-change: transform;
         }
 
         .carousel, .outer-carousel {
             position: absolute;
             transform-style: preserve-3d;
-            /* 确保旋转中心对齐 */
-            left: 50%; top: 50%;
+            left: 0; top: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             will-change: transform;
         }
 
@@ -65,18 +67,17 @@
         .photo { width: 180px; height: 250px; border-radius: 12px; margin-left: -90px; margin-top: -125px; }
         .asteroid { width: 70px; height: 70px; border-radius: 50%; margin-left: -35px; margin-top: -35px; }
 
-        /* 手机端专门调整 */
+        /* 手机端专门适配 */
         @media (max-width: 768px) {
-            body { perspective: 1000px; }
             .photo { 
-                width: 100px; height: 140px; 
-                margin-left: -50px; margin-top: -70px; /* 严格居中对齐 */
+                width: 110px; height: 150px; 
+                margin-left: -55px; margin-top: -75px; 
                 -webkit-box-reflect: none !important; 
                 filter: none !important; 
             }
             .asteroid { 
-                width: 50px; height: 50px; 
-                margin-left: -25px; margin-top: -25px; /* 严格居中对齐 */
+                width: 40px; height: 40px; 
+                margin-left: -20px; margin-top: -20px; 
                 filter: none !important;
             }
         }
@@ -100,9 +101,8 @@
         const isMobile = window.innerWidth <= 768;
 
         function init() {
-            // 星星数量优化
-            const starCount = isMobile ? 40 : 120;
-            for (let i = 0; i < starCount; i++) {
+            // 生成星星
+            for (let i = 0; i < (isMobile ? 40 : 120); i++) {
                 const star = document.createElement('div');
                 star.className = 'star';
                 const size = (Math.random() * 2) + 'px';
@@ -112,9 +112,9 @@
                 starfield.appendChild(star);
             }
 
-            // 内圈：手机端半径缩小至 180-200 确保在屏幕内
-            const totalMain = isMobile ? 6 : 10;
-            const radiusMain = isMobile ? 180 : 450;
+            // 内圈：手机端半径缩小至 170
+            const totalMain = isMobile ? 8 : 10;
+            const radiusMain = isMobile ? 170 : 450;
             for (let i = 0; i < totalMain; i++) {
                 const img = document.createElement('img');
                 img.className = 'photo';
@@ -124,20 +124,21 @@
                 carousel.appendChild(img);
             }
 
-            // 外圈：手机端半径缩小
+            // 外圈：手机端半径缩小至 300
             const totalOuter = isMobile ? 8 : 15;
-            const radiusOuter = isMobile ? 320 : 800;
+            const radiusOuter = isMobile ? 300 : 800;
             for (let i = 0; i < totalOuter; i++) {
                 const img = document.createElement('img');
                 img.className = 'asteroid';
                 img.src = myImages[i % myImages.length];
                 const angle = i * (360 / totalOuter);
-                const randomY = (Math.random() - 0.5) * (isMobile ? 250 : 500);
+                const randomY = (Math.random() - 0.5) * (isMobile ? 200 : 500);
                 img.style.transform = `rotateY(${angle}deg) translateZ(${radiusOuter}px) translateY(${randomY}px)`;
                 outerCarousel.appendChild(img);
             }
         }
 
+        // 交互逻辑
         let isPointerDown = false;
         let startX, startY;
         let targetRotateY = 0;
@@ -146,7 +147,7 @@
         let currentRotateX = -10;
 
         const getPoint = (e) => {
-            if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
             return { x: e.clientX, y: e.clientY };
         };
 
@@ -160,8 +161,8 @@
             if (!isPointerDown) return;
             if (e.cancelable) e.preventDefault(); 
             const p = getPoint(e);
-            const deltaX = (p.x - startX) * 0.3;
-            const deltaY = (p.y - startY) * 0.3;
+            const deltaX = (p.x - startX) * 0.4;
+            const deltaY = (p.y - startY) * 0.4;
 
             targetRotateY += deltaX;
             targetRotateX -= deltaY;
@@ -173,14 +174,14 @@
         const onEnd = () => { isPointerDown = false; };
 
         function update() {
-            // 平滑缓动
             currentRotateY += (targetRotateY - currentRotateY) * 0.08;
             currentRotateX += (targetRotateX - currentRotateX) * 0.08;
 
-            // 应用旋转
-            carousel.style.transform = `translate(-50%, -50%) rotateY(${currentRotateY}deg)`;
-            outerCarousel.style.transform = `translate(-50%, -50%) rotateY(${-currentRotateY * 0.3}deg)`;
-            stage.style.transform = `rotateX(${currentRotateX}deg)`;
+            // 修正应用位置，确保 stage 在正中心
+            carousel.style.transform = `rotateY(${currentRotateY}deg)`;
+            outerCarousel.style.transform = `rotateY(${-currentRotateY * 0.3}deg)`;
+            // 同时应用平移和旋转，确保居中
+            stage.style.transform = `translate(-50%, -50%) rotateX(${currentRotateX}deg)`;
 
             requestAnimationFrame(update);
         }
