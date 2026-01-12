@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>灵动星系画廊 - ttpp</title>
+    <style>
+        body {
+            margin: 0;
+            /* 深邃宇宙渐变背景 */
+            background: radial-gradient(circle at center, #001a33 0%, #000000 80%);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1500px;
+        }
+
+        #starfield {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        /* 1. 星星闪烁动画 */
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            filter: blur(1px);
+            animation: twinkle var(--duration) infinite ease-in-out;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* 2. 流星动画 */
+        .shooting-star {
+            position: absolute;
+            width: 100px;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.8), transparent);
+            transform: rotate(-45deg);
+            pointer-events: none;
+            animation: shoot var(--speed) linear infinite;
+        }
+
+        @keyframes shoot {
+            0% { transform: translateX(0) translateY(0) rotate(-45deg); opacity: 0; }
+            10% { opacity: 1; }
+            30% { transform: translateX(-800px) translateY(800px) rotate(-45deg); opacity: 0; }
+            100% { opacity: 0; }
+        }
+
+        /* 核心舞台 */
+        .stage {
+            position: relative;
+            width: 0;
+            height: 0;
+            transform-style: preserve-3d;
+            transform: rotateX(-15deg);
+            transition: transform 0.2s ease-out;
+        }
+
+        .carousel, .outer-carousel {
+            position: absolute;
+            transform-style: preserve-3d;
+            left: 0;
+            top: 0;
+        }
+
+        /* 内圈慢速旋转，外圈中速反向旋转 */
+        .carousel { animation: rotateMain 40s linear infinite; }
+        .outer-carousel { animation: rotateOuter 60s linear infinite reverse; }
+
+        .photo, .asteroid {
+            position: absolute;
+            object-fit: cover;
+            border: 1px solid rgba(255,255,255,0.4);
+            box-shadow: 0 0 15px rgba(0,242,255,0.3);
+            transition: all 0.4s ease;
+            transform-origin: center;
+            /* 倒影效果 */
+            -webkit-box-reflect: below 15px linear-gradient(transparent, rgba(0,0,0,0.1));
+        }
+
+        .photo { 
+            width: 180px; height: 250px; 
+            border-radius: 12px;
+            margin-left: -90px; margin-top: -125px;
+        }
+
+        /* 3. 外圈增加灵动的“悬浮”感 */
+        .asteroid { 
+            width: 70px; height: 70px; 
+            border-radius: 50%; 
+            margin-left: -35px; margin-top: -35px;
+            animation: float-y 5s ease-in-out infinite alternate;
+        }
+
+        @keyframes float-y {
+            from { transform: var(--base-transform) translateY(-20px); }
+            to { transform: var(--base-transform) translateY(20px); }
+        }
+
+        @keyframes rotateMain { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+        @keyframes rotateOuter { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+
+        .photo:hover, .asteroid:hover {
+            filter: brightness(1.2) scale(1.1);
+            border-color: #00f2ff;
+            box-shadow: 0 0 30px #00f2ff;
+            cursor: pointer;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="starfield"></div>
+
+    <div class="stage" id="stage">
+        <div class="carousel" id="carousel"></div>
+        <div class="outer-carousel" id="outer-carousel"></div>
+    </div>
+
+    <script>
+        // --- 1. 这里填入你的图片文件名 ---
+        const myImages = ['ttpp1.jpg', 'ttpp2.jpg', 'ttpp3.jpg'];
+        
+        const stage = document.getElementById('stage');
+        const carousel = document.getElementById('carousel');
+        const outerCarousel = document.getElementById('outer-carousel');
+        const starfield = document.getElementById('starfield');
+
+        // 生成星空
+        function createStars() {
+            for (let i = 0; i < 180; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                const size = Math.random() * 3 + 'px';
+                star.style.width = size;
+                star.style.height = size;
+                star.style.left = Math.random() * 100 + 'vw';
+                star.style.top = Math.random() * 100 + 'vh';
+                star.style.setProperty('--duration', (Math.random() * 3 + 2) + 's');
+                starfield.appendChild(star);
+            }
+        }
+
+        // 生成随机流星
+        function createShootingStars() {
+            setInterval(() => {
+                const s = document.createElement('div');
+                s.className = 'shooting-star';
+                s.style.left = Math.random() * 100 + 'vw';
+                s.style.top = Math.random() * 40 + 'vh';
+                s.style.setProperty('--speed', (Math.random() * 2 + 2) + 's');
+                starfield.appendChild(s);
+                setTimeout(() => s.remove(), 4000);
+            }, 3000);
+        }
+
+        // 生成内圈 (展示你的图片)
+        const totalMain = 10; 
+        const radiusMain = 450;
+        for (let i = 0; i < totalMain; i++) {
+            const img = document.createElement('img');
+            img.className = 'photo';
+            img.src = myImages[i % myImages.length]; // 循环使用你的图片
+            const angle = i * (360 / totalMain);
+            img.style.transform = `rotateY(${angle}deg) translateZ(${radiusMain}px)`;
+            carousel.appendChild(img);
+        }
+
+        // 生成外圈 (展示你的图片作为小行星)
+        const totalOuter = 18;
+        const radiusOuter = 800;
+        for (let i = 0; i < totalOuter; i++) {
+            const img = document.createElement('img');
+            img.className = 'asteroid';
+            img.src = myImages[i % myImages.length]; 
+            const angle = i * (360 / totalOuter);
+            const randomY = (Math.random() - 0.5) * 400; // 随机高度分布
+            
+            // 将基础位置存入变量，用于 CSS 浮动动画
+            const basePos = `rotateY(${angle}deg) translateZ(${radiusOuter}px) translateY(${randomY}px)`;
+            img.style.setProperty('--base-transform', basePos);
+            img.style.animationDelay = (Math.random() * 5) + 's';
+            img.style.transform = basePos;
+            
+            outerCarousel.appendChild(img);
+        }
+
+        // 初始化
+        createStars();
+        createShootingStars();
+
+        // 鼠标跟随互动
+        document.addEventListener('mousemove', (e) => {
+            const xPercent = (e.clientX / window.innerWidth) - 0.5;
+            const yPercent = (e.clientY / window.innerHeight) - 0.5;
+            stage.style.transform = `rotateX(${-15 - (yPercent * 30)}deg) rotateY(${xPercent * 30}deg)`;
+        });
+
+    </script>
+</body>
+</html>
