@@ -2,90 +2,112 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>互动星系画廊 - ttpp</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>梦幻永恒星系 - ttpp</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        :root {
+            --glow-color: rgba(0, 242, 255, 0.5);
+            --accent-color: rgba(255, 0, 193, 0.4);
+        }
+
         body {
-            background: radial-gradient(circle at center, #001a33 0%, #000000 80%);
+            margin: 0;
+            background: #000;
             overflow: hidden;
-            width: 100vw;
             height: 100vh;
-            /* 使用 Flex 确保容器本身居中 */
+            width: 100vw;
             display: flex;
             justify-content: center;
             align-items: center;
-            perspective: 1000px;
-            /* 关键：视点必须在正中心 */
-            perspective-origin: center center; 
-            touch-action: none;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
+            perspective: 1500px;
         }
 
+        /* 1. 星云层：色彩流转 */
+        #nebula {
+            position: fixed;
+            width: 200%; height: 200%;
+            top: -50%; left: -50%;
+            background: 
+                radial-gradient(circle at 30% 30%, rgba(0, 210, 255, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 70% 70%, rgba(255, 0, 193, 0.1) 0%, transparent 40%),
+                #020408;
+            z-index: -2;
+            animation: nebulaMove 40s infinite linear;
+        }
+
+        @keyframes nebulaMove {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* 2. 星星层：闪烁效果 */
         #starfield {
             position: fixed;
-            top: 0; left: 0;
             width: 100%; height: 100%;
             z-index: -1;
         }
 
         .star {
             position: absolute;
-            background: white;
+            background: #fff;
             border-radius: 50%;
+            animation: twinkle var(--d) infinite ease-in-out;
         }
 
-        /* 舞台居中逻辑：取消 fixed，使用相对中心 */
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; transform: scale(0.7); }
+            50% { opacity: 0.9; transform: scale(1.1); }
+        }
+
+        /* 3. 舞台与旋转体 */
         .stage {
-            position: relative;
+            position: fixed;
+            top: 50%; left: 50%;
             transform-style: preserve-3d;
-            /* 初始倾斜 */
-            transform: rotateX(-10deg);
             will-change: transform;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
 
         .carousel, .outer-carousel {
             position: absolute;
             transform-style: preserve-3d;
-            will-change: transform;
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        .photo, .asteroid {
+        /* 照片卡片：发光与倒影 */
+        .photo {
             position: absolute;
+            width: 220px;
+            height: 310px;
             object-fit: cover;
-            border: 1px solid rgba(255,255,255,0.4);
-            box-shadow: 0 0 15px rgba(0,242,255,0.3);
-            /* 强制变换中心 */
-            transform-origin: center center;
-            pointer-events: none;
-            -webkit-box-reflect: below 15px linear-gradient(transparent, rgba(0,0,0,0.1));
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 30px var(--glow-color);
+            margin-left: -110px;
+            margin-top: -155px;
+            -webkit-box-reflect: below 25px linear-gradient(transparent, rgba(0,0,0,0.2));
+            transition: filter 0.8s ease;
         }
 
-        /* 电脑尺寸 */
-        .photo { width: 180px; height: 250px; border-radius: 12px; }
-        .asteroid { width: 60px; height: 60px; border-radius: 50%; }
+        /* 粒子星环 */
+        .particle {
+            position: absolute;
+            width: 6px; height: 6px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #fff, 0 0 20px #00d2ff;
+            margin-left: -3px; margin-top: -3px;
+        }
 
-        /* 手机适配：核心是缩小半径和取消昂贵特效 */
         @media (max-width: 768px) {
-            .photo { 
-                width: 100px; height: 140px; 
-                -webkit-box-reflect: none !important;
-                filter: none !important;
-            }
-            .asteroid { width: 40px; height: 40px; filter: none !important;}
+            .photo { width: 130px; height: 180px; margin-left: -65px; margin-top: -90px; }
         }
     </style>
 </head>
 <body>
 
+    <div id="nebula"></div>
     <div id="starfield"></div>
 
     <div class="stage" id="stage">
@@ -95,102 +117,93 @@
 
     <script>
         const myImages = ['ttpp1.jpg', 'ttpp2.jpg', 'ttpp3.jpg'];
-        const stage = document.getElementById('stage');
-        const carousel = document.getElementById('carousel');
-        const outerCarousel = document.getElementById('outer-carousel');
-        const starfield = document.getElementById('starfield');
         const isMobile = window.innerWidth <= 768;
 
-        function init() {
-            // 星星
-            for (let i = 0; i < (isMobile ? 40 : 100); i++) {
+        // 初始化繁星
+        function createStars() {
+            const field = document.getElementById('starfield');
+            for (let i = 0; i < (isMobile ? 80 : 200); i++) {
                 const star = document.createElement('div');
                 star.className = 'star';
-                const size = Math.random() * 2 + 'px';
-                star.style.width = size; star.style.height = size;
+                const size = Math.random() * 2.5 + 'px';
+                star.style.width = size;
+                star.style.height = size;
                 star.style.left = Math.random() * 100 + 'vw';
                 star.style.top = Math.random() * 100 + 'vh';
-                starfield.appendChild(star);
+                star.style.setProperty('--d', (Math.random() * 4 + 2) + 's');
+                field.appendChild(star);
             }
+        }
 
-            // 内圈
-            const totalMain = isMobile ? 6 : 10;
-            const radiusMain = isMobile ? 160 : 400; // 手机端进一步缩小半径防止偏离
-            for (let i = 0; i < totalMain; i++) {
+        // 初始化画廊与粒子环
+        function init() {
+            const carousel = document.getElementById('carousel');
+            const outer = document.getElementById('outer-carousel');
+            
+            const totalPhotos = isMobile ? 8 : 12;
+            const radiusPhotos = isMobile ? 220 : 600;
+
+            for (let i = 0; i < totalPhotos; i++) {
                 const img = document.createElement('img');
                 img.className = 'photo';
                 img.src = myImages[i % myImages.length];
-                const angle = i * (360 / totalMain);
-                // 确保 translateZ 是最后的变换
-                img.style.transform = `rotateY(${angle}deg) translateZ(${radiusMain}px)`;
+                img.onerror = function() { this.src = `https://picsum.photos/400/600?random=${i}`; };
+                const angle = i * (360 / totalPhotos);
+                img.style.transform = `rotateY(${angle}deg) translateZ(${radiusPhotos}px)`;
                 carousel.appendChild(img);
             }
 
-            // 外圈
-            const totalOuter = isMobile ? 6 : 12;
-            const radiusOuter = isMobile ? 280 : 700;
-            for (let i = 0; i < totalOuter; i++) {
-                const img = document.createElement('img');
-                img.className = 'asteroid';
-                img.src = myImages[i % myImages.length];
-                const angle = i * (360 / totalOuter);
-                const randomY = (Math.random() - 0.5) * (isMobile ? 150 : 400);
-                img.style.transform = `rotateY(${angle}deg) translateZ(${radiusOuter}px) translateY(${randomY}px)`;
-                outerCarousel.appendChild(img);
+            const totalParticles = 40;
+            const radiusOuter = isMobile ? 350 : 900;
+            for (let i = 0; i < totalParticles; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                const angle = i * (360 / totalParticles);
+                const randomY = (Math.random() - 0.5) * 600;
+                p.style.transform = `rotateY(${angle}deg) translateZ(${radiusOuter}px) translateY(${randomY}px)`;
+                outer.appendChild(p);
             }
         }
 
-        let isPointerDown = false;
-        let startX, startY;
-        let targetRotateY = 0;
-        let targetRotateX = -10;
-        let currentRotateY = 0;
-        let currentRotateX = -10;
+        let frame = 0;
+        function render() {
+            frame += 0.005; // 自动运行的速度系数
 
-        const getPoint = (e) => {
-            if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            return { x: e.clientX, y: e.clientY };
-        };
+            const stage = document.getElementById('stage');
+            const carousel = document.getElementById('carousel');
+            const outer = document.getElementById('outer-carousel');
+            const photos = document.querySelectorAll('.photo');
 
-        window.addEventListener('mousedown', (e) => { isPointerDown = true; const p = getPoint(e); startX = p.x; startY = p.y; });
-        window.addEventListener('touchstart', (e) => { isPointerDown = true; const p = getPoint(e); startX = p.x; startY = p.y; }, {passive: false});
+            // 核心动态逻辑
+            const rotY = frame * 40; // 绕Y轴匀速转动
+            const rotX = -10 + Math.sin(frame * 0.5) * 15; // 随时间缓慢俯仰
+            const floatY = Math.cos(frame * 0.8) * 25; // 随时间缓慢上下浮动
 
-        window.addEventListener('mousemove', (e) => {
-            if (!isPointerDown) return;
-            const p = getPoint(e);
-            targetRotateY += (p.x - startX) * 0.3;
-            targetRotateX -= (p.y - startY) * 0.3;
-            targetRotateX = Math.max(-35, Math.min(35, targetRotateX));
-            startX = p.x; startY = p.y;
-        });
+            // 应用变换：居中平移 + 浮动 + 俯仰
+            stage.style.transform = `translate(-50%, calc(-50% + ${floatY}px)) rotateX(${rotX}deg)`;
+            
+            // 内圈照片旋转
+            carousel.style.transform = `rotateY(${rotY}deg)`;
+            
+            // 外圈粒子反向旋转，更有层次感
+            outer.style.transform = `rotateY(${-rotY * 0.3}deg)`;
 
-        window.addEventListener('touchmove', (e) => {
-            if (!isPointerDown) return;
-            if (e.cancelable) e.preventDefault();
-            const p = getPoint(e);
-            targetRotateY += (p.x - startX) * 0.5; // 手机端稍微灵敏点
-            targetRotateX -= (p.y - startY) * 0.5;
-            targetRotateX = Math.max(-35, Math.min(35, targetRotateX));
-            startX = p.x; startY = p.y;
-        }, {passive: false});
+            // 智能景深效果
+            photos.forEach((p, i) => {
+                const angle = (i * (360 / photos.length) + rotY) % 360;
+                const normalized = Math.abs(((angle + 180) % 360) - 180);
+                const focus = (180 - normalized) / 180;
+                
+                p.style.filter = `brightness(${0.3 + focus * 0.9}) blur(${(1 - focus) * 2}px)`;
+                p.style.zIndex = Math.round(focus * 100);
+            });
 
-        window.addEventListener('mouseup', () => isPointerDown = false);
-        window.addEventListener('touchend', () => isPointerDown = false);
-
-        function update() {
-            currentRotateY += (targetRotateY - currentRotateY) * 0.1;
-            currentRotateX += (targetRotateX - currentRotateX) * 0.1;
-
-            // 这里是关键：stage 不再使用 translate(-50%,-50%)，而是靠 flex 居中，只负责 rotateX
-            stage.style.transform = `rotateX(${currentRotateX}deg)`;
-            carousel.style.transform = `rotateY(${currentRotateY}deg)`;
-            outerCarousel.style.transform = `rotateY(${-currentRotateY * 0.4}deg)`;
-
-            requestAnimationFrame(update);
+            requestAnimationFrame(render);
         }
 
+        createStars();
         init();
-        update();
+        render();
     </script>
 </body>
 </html>
